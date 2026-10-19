@@ -4,6 +4,12 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and versioning
 follows [SemVer](https://semver.org/).
 
+## [0.4.1] - 2026-10-19
+
+### Changed
+- The Composer dist archive no longer ships development files (`tests/`,
+  `.github/`, `phpunit.xml`, `.gitattributes`, `.gitignore`, `CHANGELOG.md`).
+
 ## [0.4.0] - 2026-10-01
 
 ### Changed (breaking)
