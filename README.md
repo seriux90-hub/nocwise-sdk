@@ -39,6 +39,32 @@ Check that everything works:
 php artisan nocwise:test
 ```
 
+The command sends a real test event and waits for the server's answer. It
+exits with `0` only when Nocwise accepted the event; otherwise it prints the
+reason and exits with `1`, so you can also use it in a deploy script or CI:
+
+```
+Evento de prueba aceptado por Nocwise. Compruébalo en tu proyecto (puede tardar unos segundos).
+```
+
+```
+No se pudo enviar el evento de prueba: el servidor rechazó el evento (HTTP 402): {"message":"Has superado la cuota de volumen mensual de tu plan. Mejora tu plan para seguir enviando logs."}
+```
+
+Common failures:
+
+| Message | What to check |
+|---|---|
+| `Nocwise no está configurado.` | `NOCWISE_ENABLED`, `NOCWISE_KEY` and `NOCWISE_URL` in your `.env` |
+| `el servidor rechazó el evento (HTTP 401/403)` | `NOCWISE_KEY`, and `NOCWISE_SIGNING_SECRET` if your project requires signed payloads |
+| `el servidor rechazó el evento (HTTP 402)` | Your plan's monthly quota is used up |
+| `fallo de red …: cURL error 6 / 7 / 28` | `NOCWISE_URL` is wrong or unreachable from this machine, or `NOCWISE_TIMEOUT` is too low |
+| `fallo de red …: cURL error 60` | PHP doesn't trust the TLS certificate of your Nocwise instance (common with local `mkcert` certificates inside Docker): point `curl.cainfo` / `openssl.cafile` to a CA bundle that includes it |
+| `el modo dry-run está activo` | `NOCWISE_DRY_RUN=true` — nothing is sent, so nothing can be verified |
+
+The test event is always sent: it ignores `NOCWISE_SAMPLE_RATE` and an open
+circuit breaker, unlike regular events.
+
 ## Usage
 
 ### Manual capture
@@ -118,7 +144,7 @@ ones:
 | `NOCWISE_MIN_LEVEL` | `error` | Minimum level captured by the logging channel |
 | `NOCWISE_SAMPLE_RATE` | `1.0` | Fraction of events actually sent (0.0–1.0), to avoid burning through your quota on very noisy apps |
 | `NOCWISE_DEBUG` | `false` | Logs what the client is doing to your local log |
-| `NOCWISE_DRY_RUN` | `false` | Builds the payload but doesn't send it — for testing the config without spending quota |
+| `NOCWISE_DRY_RUN` | `false` | Builds the payload but doesn't send it — for testing the config without spending quota. `nocwise:test` fails while it's on, since nothing reaches the server |
 | `NOCWISE_TIMEOUT` / `NOCWISE_RETRIES` | `2.0` / `0` | Per-request timeout and retries on network failure (never on a 4xx: the server has already decided) |
 | `NOCWISE_CIRCUIT_BREAKER_SECONDS` | `30` | After a network failure, stop trying to reach Nocwise for this many seconds — avoids adding a full timeout to every single log call while Nocwise is down. `0` disables it |
 
