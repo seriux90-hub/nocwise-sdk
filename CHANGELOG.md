@@ -4,6 +4,12 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and versioning
 follows [SemVer](https://semver.org/).
 
+## [0.4.3] - 2026-10-19
+
+### Changed
+- README: documents how `nocwise:test` reports its result (exit codes,
+  example output and the most common failure messages).
+
 ## [0.4.2] - 2026-10-19
 
 ### Fixed
