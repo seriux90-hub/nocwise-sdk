@@ -11,7 +11,7 @@ use Nocwise\LaravelClient\Support\PiiScrubber;
 
 class NocwiseServiceProvider extends ServiceProvider
 {
-    public const VERSION = '0.3.0';
+    public const VERSION = '0.4.2';
 
     public function register(): void
     {

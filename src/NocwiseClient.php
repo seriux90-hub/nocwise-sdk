@@ -98,6 +98,27 @@ class NocwiseClient
     }
 
     /**
+     * Envía un evento de prueba y devuelve el motivo del fallo, o null si el
+     * servidor lo aceptó. A diferencia de capture(), no aplica sampling ni
+     * respeta un circuito abierto: lo usa nocwise:test para informar del
+     * resultado real del envío. Tampoco lanza nunca.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public function sendTestEvent(string $message, array $context = []): ?string
+    {
+        if (! $this->isConfigured()) {
+            return 'Nocwise no está configurado.';
+        }
+
+        if ($this->config->get('nocwise.dry_run', false)) {
+            return 'el modo dry-run está activo (NOCWISE_DRY_RUN), así que el evento no se envía.';
+        }
+
+        return $this->send('/api/logs', $this->buildPayload('info', $message, $context), respectCircuit: false);
+    }
+
+    /**
      * Reporta una excepción no controlada como evento de nivel error, con
      * contexto de clase/archivo/línea y una traza recortada.
      */
@@ -134,13 +155,17 @@ class NocwiseClient
         ];
     }
 
-    /** @param  array<string, mixed>  $payload */
-    private function send(string $path, array $payload): void
+    /**
+     * Devuelve null si el servidor aceptó el envío, o el motivo del fallo.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function send(string $path, array $payload, bool $respectCircuit = true): ?string
     {
-        if ($this->isCircuitOpen()) {
+        if ($respectCircuit && $this->isCircuitOpen()) {
             $this->debugLog('circuito abierto: se omite el envío (fallos de red recientes hacia Nocwise)');
 
-            return;
+            return 'circuito abierto por fallos de red recientes hacia Nocwise.';
         }
 
         $body = json_encode($payload);
@@ -151,7 +176,7 @@ class NocwiseClient
             // "false" — se descarta el evento y se registra en debug.
             $this->debugLog('no se pudo serializar el payload a JSON', ['error' => json_last_error_msg()]);
 
-            return;
+            return 'no se pudo serializar el payload a JSON: '.json_last_error_msg();
         }
 
         $headers = ['Content-Type' => 'application/json', 'X-API-Key' => $this->config->get('nocwise.api_key')];
@@ -174,16 +199,17 @@ class NocwiseClient
                 if ($response->successful()) {
                     $this->debugLog('evento enviado', ['status' => $response->status()]);
 
-                    return;
+                    return null;
                 }
 
                 // Un 4xx (api key inválida, cuota superada, rate limit...) es una
                 // decisión del servidor: no tiene sentido reintentar el mismo envío.
                 $this->debugLog('el servidor rechazó el evento', ['status' => $response->status(), 'body' => $response->body()]);
 
-                return;
+                return "el servidor rechazó el evento (HTTP {$response->status()}): ".mb_substr($response->body(), 0, 500);
             } catch (Throwable $e) {
-                $this->debugLog('fallo de red enviando el evento', ['attempt' => $attempt, 'error' => $e->getMessage()]);
+                $error = $e->getMessage();
+                $this->debugLog('fallo de red enviando el evento', ['attempt' => $attempt, 'error' => $error]);
 
                 if ($attempt < $attempts) {
                     usleep((int) $this->config->get('nocwise.retry_backoff_ms', 100) * 1000);
@@ -197,6 +223,8 @@ class NocwiseClient
         // timeout completo en cada log que ocurra durante los próximos
         // segundos — evita que una caída de Nocwise ralentice la app.
         $this->openCircuit();
+
+        return 'fallo de red enviando el evento: '.$error;
     }
 
     /**

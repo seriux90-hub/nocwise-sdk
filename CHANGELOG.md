@@ -4,6 +4,21 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and versioning
 follows [SemVer](https://semver.org/).
 
+## [0.4.2] - 2026-10-19
+
+### Fixed
+- `nocwise:test` reported "sent" and exited with code 0 even when the event
+  never reached Nocwise (network error, TLS error, 4xx response...). It now
+  waits for the server's answer, prints the reason of the failure and exits
+  with a non-zero code. It also ignores sampling and an open circuit breaker,
+  so the test event is always actually sent.
+- `meta.sdk_version` in every payload reported `0.3.0`; it now matches the
+  package version.
+
+### Added
+- `NocwiseClient::sendTestEvent()`, which returns `null` when the server
+  accepted the event or the reason it failed. `capture()` is unchanged.
+
 ## [0.4.1] - 2026-10-19
 
 ### Changed

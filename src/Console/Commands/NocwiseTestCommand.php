@@ -19,12 +19,18 @@ class NocwiseTestCommand extends Command
             return self::FAILURE;
         }
 
-        $client->capture('info', 'Evento de prueba desde nocwise:test', [
+        $error = $client->sendTestEvent('Evento de prueba desde nocwise:test', [
             'source' => 'nocwise:test',
             'app' => config('app.name'),
         ]);
 
-        $this->info('Evento de prueba enviado. Compruébalo en tu proyecto de Nocwise (puede tardar unos segundos).');
+        if ($error !== null) {
+            $this->error("No se pudo enviar el evento de prueba: {$error}");
+
+            return self::FAILURE;
+        }
+
+        $this->info('Evento de prueba aceptado por Nocwise. Compruébalo en tu proyecto (puede tardar unos segundos).');
 
         return self::SUCCESS;
     }
